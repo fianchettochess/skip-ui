@@ -51,7 +51,9 @@ class HapticFeedbackRegressionTests {
     }
 
     @Test fun standardFeedbackEntryPointsReachAvailableVibrator() {
-        for (feedback in listOf(SensoryFeedback.success, SensoryFeedback.error, SensoryFeedback.selection)) {
+        for (feedback in listOf(SensoryFeedback.success, SensoryFeedback.warning, SensoryFeedback.error,
+            SensoryFeedback.selection, SensoryFeedback.increase, SensoryFeedback.decrease,
+            SensoryFeedback.start, SensoryFeedback.stop, SensoryFeedback.alignment, SensoryFeedback.levelChange)) {
             capture { feedback.activate() }
         }
         for (style in UIImpactFeedbackGenerator.FeedbackStyle.values()) {
@@ -112,4 +114,61 @@ class HapticFeedbackRegressionTests {
             Triple(VibrationEffect.Composition.PRIMITIVE_TICK, 0.5f, 100)
         ), primitives.map { Triple(it.id, it.scale, it.delay) })
     }
+
+    @Test fun impactFlexibilitySurvivesIntegerBridgeRoundTrip() {
+        val requests = SensoryFeedback.Flexibility.values().map { flexibility ->
+            val raw = SensoryFeedback.impact(flexibility = flexibility).rawValue
+            capture { SensoryFeedback(rawValue = raw).activate() }
+        }
+        assertEquals(3, requests.toSet().size)
+    }
+
+    @Test fun zeroUIKitIntensityIsSilentForEveryStyle() {
+        for (style in UIImpactFeedbackGenerator.FeedbackStyle.values()) {
+            val vibrator = prepare()
+            UIImpactFeedbackGenerator(style = style).impactOccurred(intensity = 0.0)
+            assertFalse(vibrator.recordedRequest())
+        }
+    }
+
+    @Test fun missingVibratorStaysSilent() {
+        val vibrator = prepare()
+        vibrator.setHasVibrator(false)
+        SensoryFeedback.success.activate()
+        UIImpactFeedbackGenerator().impactOccurred()
+        UINotificationFeedbackGenerator().notificationOccurred(UINotificationFeedbackGenerator.FeedbackType.error)
+        UISelectionFeedbackGenerator().selectionChanged()
+        assertFalse(vibrator.recordedRequest())
+    }
+
+    @Test fun successRequiresEveryCompositionPrimitive() {
+        assumeTrue(Build.VERSION.SDK_INT >= 30)
+        val vibrator = prepare()
+        vibrator.setSupportedPrimitives(listOf(VibrationEffect.Composition.PRIMITIVE_CLICK))
+        SensoryFeedback.success.activate()
+        assertTrue(vibrator.recordedRequest())
+        assertTrue(vibrator.recordedPrimitives().isNullOrEmpty())
+        assertTrue((vibrator.pattern?.size ?: 0) >= 3)
+    }
+
+    @Test fun reducedIntensityReachesSupportedPrimitive() {
+        assumeTrue(Build.VERSION.SDK_INT >= 30)
+        val vibrator = prepare(supportsPrimitives = true)
+        val raw = SensoryFeedback.impact(weight = SensoryFeedback.Weight.medium, intensity = 0.25).rawValue
+        SensoryFeedback(rawValue = raw).activate()
+        val primitives = requireNotNull(vibrator.recordedPrimitives())
+        assertEquals(1, primitives.size)
+        assertEquals(VibrationEffect.Composition.PRIMITIVE_CLICK, primitives.single().id)
+        assertEquals(0.25f, primitives.single().scale, 1.0f / 65535.0f)
+    }
+
+    @Test fun errorKeepsItsPulsesWithoutAmplitudeControl() {
+        val vibrator = prepare()
+        vibrator.setHasAmplitudeControl(false)
+        SensoryFeedback.error.activate()
+        assertTrue(vibrator.recordedRequest())
+        assertTrue(vibrator.recordedPrimitives().isNullOrEmpty())
+        assertTrue((vibrator.pattern?.size ?: 0) >= 5)
+    }
+
 }

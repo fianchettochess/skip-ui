@@ -44,4 +44,23 @@ final class SensoryFeedbackTests: XCTestCase {
         XCTAssertEqual(SensoryFeedback.impact.rawValue, 11)
         XCTAssertEqual(SensoryFeedback.impact(weight: .medium), .impact)
     }
+    func testImpactWireFormatBoundsAndInvalidIdentifiers() throws {
+        for style in [HapticFeedbackImpact.Style.light, .medium, .heavy, .soft, .rigid] {
+            for intensity in [0.0, 0.25, 0.5, 1.0] {
+                let impact = HapticFeedbackImpact(style: style, intensity: intensity)
+                let decoded = try XCTUnwrap(HapticFeedbackImpact(rawValue: impact.rawValue))
+                XCTAssertEqual(decoded.style, style)
+                XCTAssertEqual(decoded.intensity, intensity, accuracy: 1.0 / 65535.0)
+                XCTAssertEqual(decoded.rawValue, impact.rawValue)
+                XCTAssertLessThanOrEqual(impact.rawValue, Int(Int32.max))
+            }
+        }
+        for invalid in [Int.min, -1, 0, 12, 16777215, 16777216 + 5 * 65536, Int.max] {
+            XCTAssertNil(HapticFeedbackImpact(rawValue: invalid))
+        }
+        XCTAssertEqual(HapticFeedbackImpact(style: .heavy, intensity: -.infinity).intensity, 0)
+        XCTAssertEqual(HapticFeedbackImpact(style: .heavy, intensity: .infinity).intensity, 1)
+        XCTAssertEqual(HapticFeedbackImpact(style: .heavy, intensity: .nan).intensity, 0)
+    }
+
 }
