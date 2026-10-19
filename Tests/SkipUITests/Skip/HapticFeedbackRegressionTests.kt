@@ -181,4 +181,20 @@ class HapticFeedbackRegressionTests {
         assertTrue((vibrator.pattern?.size ?: 0) >= 5)
     }
 
+
+    @Test @Config(sdk = [29, 31, 35]) fun uiKitSelectionKeepsItsPredefinedTick() {
+        val vibrator = prepare()
+        UISelectionFeedbackGenerator().selectionChanged()
+        if (Build.VERSION.SDK_INT < 31) {
+            assertEquals(VibrationEffect.EFFECT_TICK, vibrator.effectId)
+        } else {
+            val segments: kotlin.collections.List<Any> = ReflectionHelpers.getStaticField(
+                ShadowVibrator::class.java, "vibrationEffectSegments")
+            assertEquals(1, segments.size)
+            assertEquals("PrebakedSegment", segments.single().javaClass.simpleName)
+            val effectId: Int = ReflectionHelpers.callInstanceMethod(segments.single(), "getEffectId")
+            assertEquals(VibrationEffect.EFFECT_TICK, effectId)
+        }
+    }
+
 }
