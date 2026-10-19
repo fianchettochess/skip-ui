@@ -85,7 +85,7 @@ open class UISelectionFeedbackGenerator : UIFeedbackGenerator {
     /// call when a notification is displayed, passing the corresponding type
     open func selectionChanged() {
         #if SKIP
-        AndroidHapticFeedback.sensory(identifier: 4)
+        AndroidHapticFeedback.selection()
         #endif
     }
 

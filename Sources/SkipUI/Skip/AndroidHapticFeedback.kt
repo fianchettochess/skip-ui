@@ -73,6 +73,16 @@ internal object AndroidHapticFeedback {
         play(vibrator, pulses)
     }
 
+    fun selection() {
+        val vibrator = vibrator() ?: return
+        if (Build.VERSION.SDK_INT >= 29) {
+            // Keep UIKit's existing modern selection effect and Android's hardware fallback.
+            vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
+        } else {
+            waveform(vibrator, listOf(Pulse(PRIMITIVE_TICK, 1.0f, 0, 8, 100)), 1.0)
+        }
+    }
+
     fun notification(kind: Int) {
         val pulses = when (kind) {
             0, 1 -> listOf(Pulse(PRIMITIVE_CLICK, 0.8f, 0, 15, 204), Pulse(PRIMITIVE_CLICK, 0.8f, 150, 15, 204))
