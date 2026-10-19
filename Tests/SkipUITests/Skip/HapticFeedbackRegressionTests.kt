@@ -33,9 +33,13 @@ class HapticFeedbackRegressionTests {
         }
     }
 
+    // Robolectric exposes API31+ segment compositions through a different accessor.
+    private fun ShadowVibrator.recordedPrimitives() =
+        if (Build.VERSION.SDK_INT >= 31) primitiveSegmentsInPrimitiveEffects else primitiveEffects
+
     private fun ShadowVibrator.recordedRequest(): Boolean =
         isVibrating || milliseconds != 0L || pattern != null ||
-            effectId != 0 || !primitiveEffects.isNullOrEmpty()
+            effectId != 0 || !recordedPrimitives().isNullOrEmpty()
 
     private fun capture(action: () -> Unit): String {
         val vibrator = prepare()
@@ -43,7 +47,7 @@ class HapticFeedbackRegressionTests {
         assertTrue("The available vibrator must receive a request on API ${Build.VERSION.SDK_INT}",
             vibrator.recordedRequest())
         return "${vibrator.milliseconds}|${vibrator.pattern?.contentToString()}|" +
-            "${vibrator.effectId}|${vibrator.primitiveEffects}"
+            "${vibrator.effectId}|${vibrator.recordedPrimitives()}"
     }
 
     @Test fun standardFeedbackEntryPointsReachAvailableVibrator() {
@@ -82,7 +86,7 @@ class HapticFeedbackRegressionTests {
         SensoryFeedback.error.activate()
         assertTrue(vibrator.recordedRequest())
         assertTrue("An unsupported composition must use an available fallback",
-            vibrator.primitiveEffects.isNullOrEmpty())
+            vibrator.recordedPrimitives().isNullOrEmpty())
         assertTrue("The fallback must retain multiple error pulses",
             (vibrator.pattern?.size ?: 0) >= 5)
     }
@@ -92,7 +96,7 @@ class HapticFeedbackRegressionTests {
         SensoryFeedback.error.activate()
         assertTrue(vibrator.recordedRequest())
         assertTrue("LOW_TICK was added in API31, even if a device reports the numeric ID",
-            vibrator.primitiveEffects.isNullOrEmpty())
+            vibrator.recordedPrimitives().isNullOrEmpty())
         assertTrue((vibrator.pattern?.size ?: 0) >= 5)
     }
 
@@ -100,7 +104,7 @@ class HapticFeedbackRegressionTests {
         assumeTrue(Build.VERSION.SDK_INT >= 30)
         val vibrator = prepare(supportsPrimitives = true)
         SensoryFeedback.success.activate()
-        val primitives = requireNotNull(vibrator.primitiveEffects) {
+        val primitives = requireNotNull(vibrator.recordedPrimitives()) {
             "Supported success primitives must actually reach the vibrator"
         }
         assertEquals(listOf(
