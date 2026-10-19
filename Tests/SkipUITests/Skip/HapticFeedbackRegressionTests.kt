@@ -17,6 +17,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowVibrator
+import org.robolectric.util.ReflectionHelpers
 
 /** Exercises real Android feedback entrypoints at service and effect API boundaries. */
 @RunWith(RobolectricTestRunner::class)
@@ -41,13 +42,22 @@ class HapticFeedbackRegressionTests {
         isVibrating || milliseconds != 0L || pattern != null ||
             effectId != 0 || !recordedPrimitives().isNullOrEmpty()
 
+    private fun recordedSegments(): String {
+        if (Build.VERSION.SDK_INT < 31) return ""
+        // The API31+ shadow records predefined IDs in segments, not effectId.
+        // Read the actual received segments; duration alone is -1 for every predefined effect.
+        val segments: kotlin.collections.List<Any> = ReflectionHelpers.getStaticField(
+            ShadowVibrator::class.java, "vibrationEffectSegments")
+        return segments.toString()
+    }
+
     private fun capture(action: () -> Unit): String {
         val vibrator = prepare()
         action()
         assertTrue("The available vibrator must receive a request on API ${Build.VERSION.SDK_INT}",
             vibrator.recordedRequest())
         return "${vibrator.milliseconds}|${vibrator.pattern?.contentToString()}|" +
-            "${vibrator.effectId}|${vibrator.recordedPrimitives()}"
+            "${vibrator.effectId}|${vibrator.recordedPrimitives()}|${recordedSegments()}"
     }
 
     @Test fun standardFeedbackEntryPointsReachAvailableVibrator() {
