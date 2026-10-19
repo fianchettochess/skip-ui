@@ -23,9 +23,16 @@ let bridgeMode = (Context.environment["SKIP_BRIDGE"] ?? "0") != "0"
 let forceDylib = bridgeMode || (Context.environment["SKIP_DYNAMIC_LIBRARIES"] ?? "0") != "0"
 
 if bridgeMode {
-    package.dependencies += [.package(url: "https://github.com/skiptools/skip-bridge.git", "0.0.0"..<"2.0.0")]
+    package.dependencies += [
+        .package(url: "https://github.com/skiptools/skip-bridge.git", "0.0.0"..<"2.0.0"),
+        // Generated native wrappers import SwiftJNI and call its functions directly.
+        .package(url: "https://github.com/skiptools/swift-jni.git", "0.5.0"..<"2.0.0"),
+    ]
     package.targets.forEach({ target in
-        target.dependencies += [.product(name: "SkipBridge", package: "skip-bridge")]
+        target.dependencies += [
+            .product(name: "SkipBridge", package: "skip-bridge"),
+            .product(name: "SwiftJNI", package: "swift-jni"),
+        ]
     })
 }
 
