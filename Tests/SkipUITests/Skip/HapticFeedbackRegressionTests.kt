@@ -35,7 +35,7 @@ class HapticFeedbackRegressionTests {
 
     private fun ShadowVibrator.recordedRequest(): Boolean =
         isVibrating || milliseconds != 0L || pattern != null ||
-            effectId != 0 || primitiveEffects.isNotEmpty()
+            effectId != 0 || !primitiveEffects.isNullOrEmpty()
 
     private fun capture(action: () -> Unit): String {
         val vibrator = prepare()
@@ -82,7 +82,7 @@ class HapticFeedbackRegressionTests {
         SensoryFeedback.error.activate()
         assertTrue(vibrator.recordedRequest())
         assertTrue("An unsupported composition must use an available fallback",
-            vibrator.primitiveEffects.isEmpty())
+            vibrator.primitiveEffects.isNullOrEmpty())
         assertTrue("The fallback must retain multiple error pulses",
             (vibrator.pattern?.size ?: 0) >= 5)
     }
@@ -92,7 +92,7 @@ class HapticFeedbackRegressionTests {
         SensoryFeedback.error.activate()
         assertTrue(vibrator.recordedRequest())
         assertTrue("LOW_TICK was added in API31, even if a device reports the numeric ID",
-            vibrator.primitiveEffects.isEmpty())
+            vibrator.primitiveEffects.isNullOrEmpty())
         assertTrue((vibrator.pattern?.size ?: 0) >= 5)
     }
 
@@ -100,9 +100,12 @@ class HapticFeedbackRegressionTests {
         assumeTrue(Build.VERSION.SDK_INT >= 30)
         val vibrator = prepare(supportsPrimitives = true)
         SensoryFeedback.success.activate()
+        val primitives = requireNotNull(vibrator.primitiveEffects) {
+            "Supported success primitives must actually reach the vibrator"
+        }
         assertEquals(listOf(
             Triple(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, 0),
             Triple(VibrationEffect.Composition.PRIMITIVE_TICK, 0.5f, 100)
-        ), vibrator.primitiveEffects.map { Triple(it.id, it.scale, it.delay) })
+        ), primitives.map { Triple(it.id, it.scale, it.delay) })
     }
 }
