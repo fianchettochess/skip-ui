@@ -23,13 +23,15 @@ public struct HapticFeedbackImpact : RawRepresentable, Equatable, Sendable {
 
     public init?(rawValue: Int) {
         if rawValue == 11 {
-            self.init(style: .medium, intensity: 1.0)
+            self.style = .medium
+            self.intensity = 1.0
         } else {
             // Positive, Int32-safe identifiers leave the existing 1...11 constants intact.
             guard rawValue >= 16777216, rawValue < 16777216 + 5 * 65536 else { return nil }
             let packed = rawValue - 16777216
             guard let style = Style(rawValue: packed / 65536) else { return nil }
-            self.init(style: style, intensity: Double(packed % 65536) / 65535.0)
+            self.style = style
+            self.intensity = Double(packed % 65536) / 65535.0
         }
     }
 
