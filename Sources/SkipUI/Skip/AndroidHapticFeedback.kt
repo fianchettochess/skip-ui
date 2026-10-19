@@ -8,6 +8,7 @@ import android.os.VibrationEffect
 import android.os.VibrationEffect.Composition.*
 import android.os.Vibrator
 import android.os.VibratorManager
+import kotlin.collections.List
 import skip.foundation.ProcessInfo
 
 /** Android effects shared by the sensory-feedback and UIKit entrypoints. */
