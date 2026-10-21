@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import kotlin.math.ceil
 
-/// Compose content once, then draw its recorded pixels with a drop shadow.
+/// Compose content once and record only the drawing needed for its drop shadow.
 @Composable fun Shadowed(context: ComposeContext, color: Color, offsetX: Dp, offsetY: Dp, blurRadius: Dp, content: @Composable (ComposeContext) -> Unit) {
     val density = LocalDensity.current
     val offsetXPx = with(density) { offsetX.toPx() }.toInt()
@@ -30,20 +30,16 @@ import kotlin.math.ceil
     val blurEffect = remember(blurPx) {
         if (blurPx > 0f) BlurEffect(renderEffect = null, radiusX = blurPx, radiusY = blurPx, edgeTreatment = TileMode.Decal) else null
     }
-    val contentLayer = rememberGraphicsLayer()
     val shadowLayer = rememberGraphicsLayer()
     val contentContext = context.content()
 
     Layout(modifier = context.modifier.drawWithContent {
-        contentLayer.record {
-            this@drawWithContent.drawContent()
-        }
         // Padding belongs to the recorded shadow, not the measured content.
         // It preserves the unbounded blur without adding an accessibility,
         // input or effect-producing copy of the composable subtree.
         shadowLayer.record(size = IntSize(size.width.toInt() + paddingPx * 2, size.height.toInt() + paddingPx * 2)) {
             translate(paddingPx.toFloat(), paddingPx.toFloat()) {
-                drawLayer(contentLayer)
+                this@drawWithContent.drawContent()
             }
         }
         shadowLayer.colorFilter = colorFilter
@@ -51,7 +47,7 @@ import kotlin.math.ceil
         translate((offsetXPx - paddingPx).toFloat(), (offsetYPx - paddingPx).toFloat()) {
             drawLayer(shadowLayer)
         }
-        drawLayer(contentLayer)
+        drawContent()
     }, content = {
         content(contentContext)
     }) { measurables, constraints ->
