@@ -4,7 +4,12 @@ package skip.ui
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.isRoot
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.SemanticsMatcher
+import kotlin.math.abs
+import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -88,7 +93,36 @@ class DatePickerRestoredDateTests {
             }), displayedComponents = DatePickerComponents.date, label = { Text(verbatim = "Since") }).Compose()
         }
         rule.onNodeWithText("Dec 31, 9999").performClick()
-        rule.onNodeWithContentDescription("December 30, 9999", substring = true).performClick()
+        rule.onNodeWithText("December 9999").assertIsDisplayed()
+        try {
+            // Material may omit day descriptions without a running accessibility
+            // service. Measure its real grid rather than depending on those labels.
+            fun calendarDays(): List<SemanticsNode> {
+                val heading = rule.onNodeWithContentDescription("Thursday", useUnmergedTree = true)
+                    .fetchSemanticsNode().boundsInRoot
+                return rule.onAllNodes(hasClickAction(), useUnmergedTree = true).fetchSemanticsNodes()
+                    .filter { node ->
+                        val bounds = node.boundsInRoot
+                        abs(bounds.width - heading.width) < 1f &&
+                            abs(bounds.height - heading.height) < 1f && bounds.top >= heading.bottom
+                    }
+                    .sortedWith(compareBy<SemanticsNode> { it.boundsInRoot.top }
+                        .thenBy { it.boundsInRoot.left })
+            }
+            rule.waitUntil(timeoutMillis = 5_000) { calendarDays().size == 31 }
+            val days = calendarDays()
+            assertEquals("December must expose all 31 real day targets", 31, days.size)
+            val day30 = days[29]
+            rule.onNode(SemanticsMatcher("the measured December 30 cell") { it.id == day30.id },
+                useUnmergedTree = true).performClick()
+        } catch (failure: Throwable) {
+            fun describe(node: SemanticsNode) {
+                println("DATE_PICKER_NODE ${node.id} ${node.boundsInRoot} ${node.config}")
+                node.children.forEach(::describe)
+            }
+            rule.onAllNodes(isRoot(), useUnmergedTree = true).fetchSemanticsNodes().forEach(::describe)
+            throw failure
+        }
         rule.runOnIdle {
             assertEquals(1, writes.size)
             val selected = Instant.ofEpochMilli((writes.single() * 1000).toLong()).atZone(ZoneOffset.UTC)
