@@ -203,9 +203,13 @@ public struct DatePicker : View, Renderable {
         let minMillis: Long? = minDate != nil ? datePickerMillis(from: minDate!, timeZone: timeZone) : nil
         let maxMillis: Long? = maxDate != nil ? datePickerMillis(from: maxDate!, timeZone: timeZone) : nil
 
-        // Material defaults to 1900...2100. SwiftUI bindings and restored
-        // ISO calendar dates can legitimately lie outside those years.
-        // SKIP INSERT: val yearRange = 1..9999
+        // Material defaults to 1900...2100. Include ISO calendar years and
+        // the bound date's local year: a final UTC date in year 9999 can be
+        // displayed in year 10000 in a positive-offset time zone.
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let selectedYear = calendar.dateComponents([.year], from: selection.wrappedValue).year!
+        // SKIP INSERT: val yearRange = minOf(1, selectedYear)..maxOf(9999, selectedYear)
         let state: DatePickerState
         if minMillis != nil || maxMillis != nil {
             // SKIP INSERT: val selectableDates = object : SelectableDates { override fun isSelectableDate(utcTimeMillis: Long): Boolean { val min = minMillis; val max = maxMillis; if (min != null && utcTimeMillis < min) return false; if (max != null && utcTimeMillis > max) return false; return true } override fun isSelectableYear(year: Int): Boolean { return true } }

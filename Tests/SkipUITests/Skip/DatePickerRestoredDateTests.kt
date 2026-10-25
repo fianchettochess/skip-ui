@@ -8,7 +8,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.test.espresso.Espresso.pressBack
+import android.view.KeyEvent
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.time.Instant
 import java.time.ZoneOffset
@@ -69,7 +70,7 @@ class DatePickerRestoredDateTests {
             assertTrue("Opening a picker must not call the binding setter", writes.isEmpty())
             assertEquals(epoch, date.value.timeIntervalSince1970, 0.0)
         }
-        pressBack()
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         rule.onNodeWithText(label).assertIsDisplayed()
         rule.runOnIdle {
             assertTrue("Dismissing a picker must not call the binding setter", writes.isEmpty())
@@ -97,9 +98,32 @@ class DatePickerRestoredDateTests {
             assertEquals(23, selected.hour)
             assertEquals(59, selected.minute)
         }
-        pressBack()
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         rule.onNodeWithText("Dec 30, 9999").performClick()
         rule.onNodeWithText("December 9999").assertIsDisplayed()
         rule.runOnIdle { assertEquals("Reopening must not replay the selection", 1, writes.size) }
     }
+    @Test fun maximumUTCDateInPositiveOffsetKeepsItsLocalYearSelected() {
+        val epoch = 253402300799.0
+        val date = mutableStateOf(Date(timeIntervalSince1970 = epoch))
+        val writes = mutableListOf<Double>()
+        rule.setContent {
+            DatePicker(selection = Binding(get = { date.value }, set = {
+                writes.add(it.timeIntervalSince1970)
+                date.value = it
+            }), displayedComponents = DatePickerComponents.date, label = { Text(verbatim = "Since") })
+                .environment({ zone: skip.foundation.TimeZone -> EnvironmentValues.shared.settimeZone(zone) },
+                    skip.foundation.TimeZone(secondsFromGMT = 14 * 3600)).Compose()
+        }
+        rule.onNodeWithText("Jan 1, 10000").performClick()
+        rule.onNodeWithText("January 10000").assertIsDisplayed()
+        rule.runOnIdle {
+            assertTrue("The local calendar year must not clear or rewrite the restored timestamp", writes.isEmpty())
+            assertEquals(epoch, date.value.timeIntervalSince1970, 0.0)
+        }
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        rule.onNodeWithText("Jan 1, 10000").assertIsDisplayed()
+        rule.runOnIdle { assertTrue(writes.isEmpty()) }
+    }
+
 }
