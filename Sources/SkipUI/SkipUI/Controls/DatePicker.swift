@@ -203,19 +203,27 @@ public struct DatePicker : View, Renderable {
         let minMillis: Long? = minDate != nil ? datePickerMillis(from: minDate!, timeZone: timeZone) : nil
         let maxMillis: Long? = maxDate != nil ? datePickerMillis(from: maxDate!, timeZone: timeZone) : nil
 
+        // Material defaults to 1900...2100. SwiftUI bindings and restored
+        // ISO calendar dates can legitimately lie outside those years.
+        // SKIP INSERT: val yearRange = 1..9999
         let state: DatePickerState
         if minMillis != nil || maxMillis != nil {
             // SKIP INSERT: val selectableDates = object : SelectableDates { override fun isSelectableDate(utcTimeMillis: Long): Boolean { val min = minMillis; val max = maxMillis; if (min != null && utcTimeMillis < min) return false; if (max != null && utcTimeMillis > max) return false; return true } override fun isSelectableYear(year: Int): Boolean { return true } }
-            state = rememberDatePickerState(initialSelectedDateMillis: initialMillis, initialDisplayMode: displayMode, selectableDates: selectableDates)
+            state = rememberDatePickerState(initialSelectedDateMillis: initialMillis, yearRange: yearRange, initialDisplayMode: displayMode, selectableDates: selectableDates)
         } else {
-            state = rememberDatePickerState(initialSelectedDateMillis: initialMillis, initialDisplayMode: displayMode)
+            state = rememberDatePickerState(initialSelectedDateMillis: initialMillis, yearRange: yearRange, initialDisplayMode: displayMode)
         }
+
+        // Material normalizes the initial timestamp to midnight. Opening or
+        // dismissing the dialog must not publish that normalization as an edit.
+        let lastSelectedMillis = remember { mutableStateOf(state.selectedDateMillis) }
 
         let colors = DatePickerDefaults.colors(selectedDayContainerColor: tintColor, selectedYearContainerColor: tintColor, todayDateBorderColor: tintColor, currentYearContentColor: tintColor)
         SimpleDatePickerDialog(onDismissRequest: { isPresented.value = false }) {
             DatePicker(modifier: context.modifier, state: state, colors: colors)
         }
-        if let millis = state.selectedDateMillis {
+        if let millis = state.selectedDateMillis, millis != lastSelectedMillis.value {
+            lastSelectedMillis.value = millis
             dateSelected(date(fromDatePickerMillis: millis, timeZone: timeZone))
         }
     }
