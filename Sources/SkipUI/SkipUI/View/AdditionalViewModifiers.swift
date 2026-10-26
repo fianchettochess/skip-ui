@@ -905,22 +905,31 @@ extension View {
 
     // SKIP @bridge
     public func onChange<V>(of value: V, initial: Bool, _ action: @escaping (_ oldValue: V, _ newValue: V) -> Void) -> any View {
+        return onChangeErased(of: value, initial: initial, observationKey: nil, action)
+    }
+
+    /// Keep erased observations of different Swift types in separate state slots.
+    /// The key scopes only this observer; replacing it must not remount content.
+    // SKIP @bridge
+    public func onChangeErased<V>(of value: V, initial: Bool, observationKey: String?, _ action: @escaping (_ oldValue: V, _ newValue: V) -> Void) -> any View {
         #if SKIP
         return ModifiedContent(content: self, modifier: SideEffectModifier { context in
-            let rememberedValue = rememberSaveable(stateSaver: context.stateSaver as! Saver<V, Any>) { mutableStateOf(value) }
-            let rememberedInitial = rememberSaveable(stateSaver: context.stateSaver as! Saver<Bool, Any>) { mutableStateOf(true) }
+            androidx.compose.runtime.key(observationKey) {
+                let rememberedValue = rememberSaveable(stateSaver: context.stateSaver as! Saver<V, Any>) { mutableStateOf(value) }
+                let rememberedInitial = rememberSaveable(stateSaver: context.stateSaver as! Saver<Bool, Any>) { mutableStateOf(true) }
 
-            let isInitial = rememberedInitial.value
-            rememberedInitial.value = false
+                let isInitial = rememberedInitial.value
+                rememberedInitial.value = false
 
-            let oldValue = rememberedValue.value
-            let isUpdate = oldValue != value
-            if isUpdate {
-                rememberedValue.value = value
-            }
+                let oldValue = rememberedValue.value
+                let isUpdate = oldValue != value
+                if isUpdate {
+                    rememberedValue.value = value
+                }
 
-            if (initial && isInitial) || isUpdate {
-                SideEffect { action(oldValue, value) }
+                if (initial && isInitial) || isUpdate {
+                    SideEffect { action(oldValue, value) }
+                }
             }
             return ComposeResult.ok
         })
@@ -1006,10 +1015,17 @@ extension View {
 
     // SKIP @bridge
     public func onGeometryChangeErased<T>(of transform: @escaping (GeometryProxy) -> T, action: @escaping (_ oldValue: T, _ newValue: T) -> Void) -> any View {
+        return onGeometryChangeErased(of: transform, observationKey: nil, action: action)
+    }
+
+    // SKIP @bridge
+    public func onGeometryChangeErased<T>(of transform: @escaping (GeometryProxy) -> T, observationKey: String?, action: @escaping (_ oldValue: T, _ newValue: T) -> Void) -> any View {
         #if SKIP
         return ModifiedContent(content: self, modifier: RenderModifier { renderable, context in
             let globalFramePx = remember { mutableStateOf<Rect?>(nil) }
-            let storage = remember { GeometryChangeValueStorage() }
+            let storage = androidx.compose.runtime.key(observationKey) {
+                remember { GeometryChangeValueStorage() }
+            }
             let density = LocalDensity.current
             let safeArea = EnvironmentValues.shared._safeArea
 
