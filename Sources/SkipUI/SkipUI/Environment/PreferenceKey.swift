@@ -218,7 +218,7 @@ extension View {
     public func onPreferenceChange(key: Any, defaultValue: Any?, reducer: @escaping (Any?, Any?) -> Any?, action: @escaping (Any?) -> Void) -> any View {
         #if SKIP
         return ModifiedContent(content: self, modifier: RenderModifier { renderable, context in
-            let preference = rememberSaveable(stateSaver: context.stateSaver as! Saver<Preference<Any?>, Any>) {
+            let preference = rememberSaveable(saver: context.stateSaver as! Saver<MutableState<Preference<Any?>>, Any>) {
                 mutableStateOf(Preference<Any?>(key: key, initialValue: defaultValue, reducer: reducer))
             }
             let preferenceCollector = PreferenceCollector<Any?>(key: key, state: preference)
