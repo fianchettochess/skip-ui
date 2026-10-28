@@ -397,6 +397,15 @@ extension View {
         return contextMenu(menuItems: { bridgedMenuItems })
     }
 
+    // SKIP @bridge
+    public func androidLocationContextMenu(bridgedMenuItems: any View, action: @escaping (Double, Double) -> Bool) -> any View {
+        #if SKIP
+        return ModifiedContent(content: self, modifier: ContextMenuModifier(menuItems: ComposeBuilder.from({ bridgedMenuItems }), longPressAction: action))
+        #else
+        return self
+        #endif
+    }
+
     public func contextMenu(@ViewBuilder menuItems: () -> any View, @ViewBuilder preview: () -> any View) -> some View {
         #if SKIP
         // Preview is not supported on Android; fall back to standard context menu
