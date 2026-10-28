@@ -64,7 +64,7 @@ class ContextMenuModifier: RenderModifier {
             // events, so that child clickable handlers (e.g. Buttons) still receive taps.
             // Standard APIs like combinedClickable consume the down event on the Main pass,
             // which prevents nested clickables from firing.
-            interactionModifier = modifier.pointerInput(true) {
+            interactionModifier = modifier.pointerInput(density) {
                 let slop = viewConfiguration.touchSlop
                 awaitEachGesture {
                     let down = awaitPointerEvent(pass: PointerEventPass.Initial)

@@ -2,6 +2,11 @@
 // SPDX-License-Identifier: MPL-2.0
 package skip.ui
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import org.junit.Assert.assertTrue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.geometry.Offset
 import androidx.activity.ComponentActivity
@@ -62,4 +67,29 @@ class LocationContextMenuTest {
         rule.onNodeWithText("Board Setup").assertDoesNotExist()
     }
 
+    @Test fun locationUsesUpdatedDensity() {
+        val density = mutableStateOf(Density(1f))
+        val locations = mutableListOf<Double>()
+        rule.setContent {
+            CompositionLocalProvider(LocalDensity provides density.value) {
+                Button(action = {}, label = { Text(verbatim = "density surface") })
+                    .androidLocationContextMenu(
+                        bridgedMenuItems = Button(action = {}, label = { Text(verbatim = "Board Setup") }),
+                        action = { x, _ -> locations.add(x); true }
+                    ).Compose()
+            }
+        }
+        rule.onNodeWithText("density surface").performTouchInput {
+            down(Offset(20f, center.y)); advanceEventTime(700); up()
+        }
+        rule.runOnIdle { density.value = Density(2f) }
+        rule.onNodeWithText("density surface").performTouchInput {
+            down(Offset(20f, center.y)); advanceEventTime(700); up()
+        }
+        rule.runOnIdle {
+            assertEquals(2, locations.size)
+            assertTrue(kotlin.math.abs(locations[0] - 20.0) < 0.1)
+            assertTrue(kotlin.math.abs(locations[1] - 10.0) < 0.1)
+        }
+    }
 }
