@@ -8,11 +8,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -21,18 +23,22 @@ import kotlin.math.abs
 /// Modifier that wraps content in a long-press-triggered dropdown menu.
 class ContextMenuModifier: RenderModifier {
     let menuItems: ComposeBuilder
+    let longPressAction: ((Double, Double) -> Bool)?
 
-    init(menuItems: ComposeBuilder) {
+    init(menuItems: ComposeBuilder, longPressAction: ((Double, Double) -> Bool)? = nil) {
         self.menuItems = menuItems
+        self.longPressAction = longPressAction
         super.init()
         self.action = { content, context in
-            RenderContextMenu(content: content, context: context, menuItems: self.menuItems)
+            RenderContextMenu(content: content, context: context, menuItems: self.menuItems, longPressAction: self.longPressAction)
         }
     }
 }
 
-@Composable func RenderContextMenu(content: Renderable, context: ComposeContext, menuItems: ComposeBuilder) {
+@Composable func RenderContextMenu(content: Renderable, context: ComposeContext, menuItems: ComposeBuilder, longPressAction: ((Double, Double) -> Bool)? = nil) {
     let haptic = LocalHapticFeedback.current
+    let density = LocalDensity.current
+    let currentLongPressAction = rememberUpdatedState(longPressAction)
     let isMenuExpanded = remember { mutableStateOf(false) }
     let nestedMenu = remember { mutableStateOf<Menu?>(nil) }
     let coroutineScope = rememberCoroutineScope()
@@ -75,7 +81,11 @@ class ContextMenuModifier: RenderModifier {
                         } == nil
                         if longPressed {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            isMenuExpanded.value = true
+                            let x = with(density) { start.x.toDp() }
+                            let y = with(density) { start.y.toDp() }
+                            if currentLongPressAction.value?(Double(x.value), Double(y.value)) != true {
+                                isMenuExpanded.value = true
+                            }
                             // Consume remaining pointer events so the child's tap handler
                             // does not fire when the finger lifts
                             var pressed = true
