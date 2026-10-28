@@ -5,29 +5,6 @@ import Foundation
 
 // note that this needs AndroidManifest.xml permission:
 // <uses-permission android:name="android.permission.VIBRATE"/>
-#if SKIP
-let systemVibratorService = createSystemVibratorService()
-
-private func createSystemVibratorService() -> android.os.Vibrator? {
-    let context = ProcessInfo.processInfo.androidContext // Android-specific extension to get the global Context
-
-    if android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S {
-        logger.log("vibratorManager: return null due to Android version too old (\(android.os.Build.VERSION.SDK_INT))")
-        return nil
-    }
-
-    guard let vibratorManager = context.getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager else {
-        logger.log("vibratorManager: returned null")
-        return nil
-    }
-
-    logger.log("vibratorManager: \(vibratorManager)")
-
-    // https://developer.android.com/reference/android/os/Vibrator
-    return vibratorManager.getDefaultVibrator()
-}
-#endif
-
 public protocol UIFeedbackGenerator {
 }
 
@@ -46,19 +23,14 @@ open class UIImpactFeedbackGenerator : UIFeedbackGenerator {
     /// call when your UI element impacts something else
     open func impactOccurred() {
         #if SKIP
-        systemVibratorService?.vibrate(style.vibrationEffect)
+        AndroidHapticFeedback.impact(style: style.rawValue, intensity: 1.0)
         #endif
     }
 
     /// call when your UI element impacts something else with a specific intensity [0.0, 1.0]
     open func impactOccurred(intensity: CGFloat) {
         #if SKIP
-        if intensity <= 0.0 { return }
-
-        let effect = android.os.VibrationEffect.startComposition()
-            .addPrimitive(android.os.VibrationEffect.Composition.PRIMITIVE_CLICK, Float(intensity), 0)
-            .compose()
-        systemVibratorService?.vibrate(effect)
+        AndroidHapticFeedback.impact(style: style.rawValue, intensity: Double(intensity))
         #endif
     }
 
@@ -74,23 +46,6 @@ open class UIImpactFeedbackGenerator : UIFeedbackGenerator {
         case soft = 3
         case rigid = 4
 
-        #if SKIP
-        var vibrationEffect: android.os.VibrationEffect {
-            switch self {
-            case .light:
-                return android.os.VibrationEffect.createPredefined(android.os.VibrationEffect.EFFECT_TICK)
-            case .medium:
-                return android.os.VibrationEffect.createPredefined(android.os.VibrationEffect.EFFECT_CLICK)
-            case .heavy:
-                return android.os.VibrationEffect.createPredefined(android.os.VibrationEffect.EFFECT_HEAVY_CLICK)
-
-            case .soft:
-                return android.os.VibrationEffect.createPredefined(android.os.VibrationEffect.EFFECT_TICK)
-            case .rigid:
-                return android.os.VibrationEffect.createPredefined(android.os.VibrationEffect.EFFECT_CLICK)
-            }
-        }
-        #endif
     }
 }
 
@@ -103,8 +58,7 @@ open class UINotificationFeedbackGenerator : UIFeedbackGenerator {
     /// call when a notification is displayed, passing the corresponding type
     open func notificationOccurred(_ notificationType: FeedbackType) {
         #if SKIP
-        // amplitude parameter: “The strength of the vibration. This must be a value between 1 and 255”
-        systemVibratorService?.vibrate(notificationType.vibrationEffect)
+        AndroidHapticFeedback.notification(kind: notificationType.rawValue)
         #endif
     }
 
@@ -118,28 +72,6 @@ open class UINotificationFeedbackGenerator : UIFeedbackGenerator {
         case warning = 1
         case error = 2
 
-        #if SKIP
-        var vibrationEffect: android.os.VibrationEffect {
-            switch self {
-            case .success:
-                return android.os.VibrationEffect.startComposition()
-                    .addPrimitive(android.os.VibrationEffect.Composition.PRIMITIVE_CLICK, Float(0.8), 0)
-                    .addPrimitive(android.os.VibrationEffect.Composition.PRIMITIVE_CLICK, Float(0.8), 150)
-                    .compose()
-            case .warning: // feels the same as .success on iOS 17
-                return android.os.VibrationEffect.startComposition()
-                    .addPrimitive(android.os.VibrationEffect.Composition.PRIMITIVE_CLICK, Float(0.8), 0)
-                    .addPrimitive(android.os.VibrationEffect.Composition.PRIMITIVE_CLICK, Float(0.8), 150)
-                    .compose()
-            case .error:
-                return android.os.VibrationEffect.startComposition()
-                    .addPrimitive(android.os.VibrationEffect.Composition.PRIMITIVE_CLICK, Float(0.5), 0)
-                    .addPrimitive(android.os.VibrationEffect.Composition.PRIMITIVE_CLICK, Float(0.7), 100)
-                    .addPrimitive(android.os.VibrationEffect.Composition.PRIMITIVE_CLICK, Float(0.9), 150)
-                    .compose()
-            }
-        }
-        #endif
     }
 }
 
@@ -153,7 +85,7 @@ open class UISelectionFeedbackGenerator : UIFeedbackGenerator {
     /// call when a notification is displayed, passing the corresponding type
     open func selectionChanged() {
         #if SKIP
-        systemVibratorService?.vibrate(android.os.VibrationEffect.createPredefined(android.os.VibrationEffect.EFFECT_TICK))
+        AndroidHapticFeedback.selection()
         #endif
     }
 

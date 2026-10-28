@@ -25,11 +25,23 @@ public struct SensoryFeedback : RawRepresentable, Equatable {
     public static let impact = SensoryFeedback(rawValue: 11) // For bridging
 
     public static func impact(weight: SensoryFeedback.Weight = .medium, intensity: Double = 1.0) -> SensoryFeedback {
-        return SensoryFeedback.impact
+        let style: HapticFeedbackImpact.Style
+        switch weight {
+        case .light: style = .light
+        case .medium: style = .medium
+        case .heavy: style = .heavy
+        }
+        return SensoryFeedback(rawValue: HapticFeedbackImpact(style: style, intensity: intensity).rawValue)
     }
 
     public static func impact(flexibility: SensoryFeedback.Flexibility, intensity: Double = 1.0) -> SensoryFeedback {
-        return SensoryFeedback.impact
+        let style: HapticFeedbackImpact.Style
+        switch flexibility {
+        case .soft: style = .soft
+        case .solid: style = .medium
+        case .rigid: style = .rigid
+        }
+        return SensoryFeedback(rawValue: HapticFeedbackImpact(style: style, intensity: intensity).rawValue)
     }
 
     public enum Weight : Equatable {
@@ -46,57 +58,11 @@ public struct SensoryFeedback : RawRepresentable, Equatable {
 
     public func activate() {
         #if SKIP
-        guard let systemVibratorService else { return }
-
-        // Custom haptic feedback compositions designed to approximate iOS UIFeedbackGenerator behavior.
-        // Uses VibrationEffect.Composition primitives (API 30+) rather than HapticFeedbackConstants
-        // (which require API 34+ for many constants).
-        // See: https://developer.android.com/develop/ui/views/haptics/custom-haptic-effects
-        let composition = VibrationEffect.startComposition()
-
-        switch self {
-        case .success:
-            // iOS: UINotificationFeedbackGenerator.success - a strong tap then a lighter confirmation tap
-            composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, Float(1.0), 0)
-            composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, Float(0.5), 100)
-        case .warning:
-            // iOS: UINotificationFeedbackGenerator.warning - two strong, heavy beats
-            composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_SLOW_RISE, Float(1.0), 0)
-            composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_FALL, Float(1.0), 100)
-        case .error:
-            // iOS: UINotificationFeedbackGenerator.error - three rapid taps with decreasing intensity
-            composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, Float(1.0), 0)
-            composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, Float(0.75), 100)
-            composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, Float(0.5), 200)
-        case .selection:
-            // iOS: UISelectionFeedbackGenerator - very light, subtle single tick
-            composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, Float(0.3), 0)
-        case .increase:
-            // iOS: a quick upward-feeling tap for incrementing a value
-            composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, Float(0.7), 0)
-        case .decrease:
-            // iOS: a quick downward-feeling tap for decrementing a value
-            composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_FALL, Float(0.7), 0)
-        case .start:
-            // iOS: rising intensity to indicate an activity beginning
-            composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, Float(1.0), 0)
-        case .stop:
-            // iOS: falling intensity to indicate an activity ending
-            composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_FALL, Float(1.0), 0)
-        case .alignment:
-            // iOS: two quick, light taps for snapping to a guide or grid
-            composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, Float(0.5), 0)
-            composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, Float(0.5), 50)
-        case .levelChange:
-            // iOS: two distinct taps for notching into a discrete position
-            composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, Float(0.8), 0)
-            composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, Float(0.8), 100)
-        case .impact:
-            // iOS: UIImpactFeedbackGenerator.medium - a single strong thud
-            composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_THUD, Float(1.0), 0)
+        if let impact = HapticFeedbackImpact(rawValue: rawValue) {
+            AndroidHapticFeedback.impact(style: impact.style.rawValue, intensity: impact.intensity)
+        } else {
+            AndroidHapticFeedback.sensory(identifier: rawValue)
         }
-
-        systemVibratorService.vibrate(composition.compose())
         #endif
     }
 }
