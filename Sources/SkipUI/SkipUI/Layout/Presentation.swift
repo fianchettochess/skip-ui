@@ -37,6 +37,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -92,7 +93,7 @@ private let AlertDialogMaxWidth: Dp = 560.dp
 
 // SKIP INSERT: @OptIn(ExperimentalMaterial3Api::class)
 @Composable func SheetPresentation(isPresented: Binding<Bool>, isFullScreen: Bool, context: ComposeContext, content: () -> any View, onDismiss: (() -> Void)?) {
-    let interactiveDismissDisabledPreference = rememberSaveable(stateSaver: context.stateSaver as! Saver<Preference<Bool>, Any>) { mutableStateOf(Preference<Bool>(key: InteractiveDismissDisabledPreferenceKey.self)) }
+    let interactiveDismissDisabledPreference = rememberSaveable(saver: context.stateSaver as! Saver<MutableState<Preference<Bool>>, Any>) { mutableStateOf(Preference<Bool>(key: InteractiveDismissDisabledPreferenceKey.self)) }
     let interactiveDismissDisabledCollector = PreferenceCollector<Bool>(key: InteractiveDismissDisabledPreferenceKey.self, state: interactiveDismissDisabledPreference)
 
     let sheetState = rememberModalBottomSheetState(skipPartiallyExpanded: true)
@@ -145,10 +146,10 @@ private let AlertDialogMaxWidth: Dp = 560.dp
             let sheetDepth = EnvironmentValues.shared._sheetDepth
             var systemBarEdges: Edge.Set = isFullScreen ? .all : [.top, .bottom]
 
-            let detentPreferences = rememberSaveable(stateSaver: context.stateSaver as! Saver<Preference<PresentationDetentPreferences>, Any>) { mutableStateOf(Preference<PresentationDetentPreferences>(key: PresentationDetentPreferenceKey.self)) }
+            let detentPreferences = rememberSaveable(saver: context.stateSaver as! Saver<MutableState<Preference<PresentationDetentPreferences>>, Any>) { mutableStateOf(Preference<PresentationDetentPreferences>(key: PresentationDetentPreferenceKey.self)) }
             let detentPreferencesCollector = PreferenceCollector<PresentationDetentPreferences>(key: PresentationDetentPreferences.self, state: detentPreferences)
             let reducedDetentPreferences = detentPreferences.value.reduced
-            let dragIndicatorPreferences = rememberSaveable(stateSaver: context.stateSaver as! Saver<Preference<PresentationDragIndicatorPreferences>, Any>) { mutableStateOf(Preference<PresentationDragIndicatorPreferences>(key: PresentationDragIndicatorPreferenceKey.self)) }
+            let dragIndicatorPreferences = rememberSaveable(saver: context.stateSaver as! Saver<MutableState<Preference<PresentationDragIndicatorPreferences>>, Any>) { mutableStateOf(Preference<PresentationDragIndicatorPreferences>(key: PresentationDragIndicatorPreferenceKey.self)) }
             let dragIndicatorPreferencesCollector = PreferenceCollector<PresentationDragIndicatorPreferences>(key: PresentationDragIndicatorPreferences.self, state: dragIndicatorPreferences)
             let reducedDragIndicatorVisibility = dragIndicatorPreferences.value.reduced.visibility
 

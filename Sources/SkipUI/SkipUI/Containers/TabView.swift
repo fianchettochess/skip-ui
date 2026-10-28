@@ -263,7 +263,7 @@ public struct TabView : View, Renderable {
         // Isolate access to current route within child Composable so route nav does not force us to recompose
         navigateToCurrentRoute(tabBackStacks: tabBackStacks, selectedTabIndex: selectedTabIndex, tabRenderables: tabRenderables)
 
-        let tabBarPreferences = rememberSaveable(stateSaver: context.stateSaver as! Saver<Preference<ToolbarBarPreferences>, Any>) { mutableStateOf(Preference<ToolbarBarPreferences>(key: TabBarPreferenceKey.self)) }
+        let tabBarPreferences = rememberSaveable(saver: context.stateSaver as! Saver<MutableState<Preference<ToolbarBarPreferences>>, Any>) { mutableStateOf(Preference<ToolbarBarPreferences>(key: TabBarPreferenceKey.self)) }
         let tabBarPreferencesCollector = PreferenceCollector<ToolbarBarPreferences>(key: TabBarPreferenceKey.self, state: tabBarPreferences)
 
         let safeArea = EnvironmentValues.shared._safeArea

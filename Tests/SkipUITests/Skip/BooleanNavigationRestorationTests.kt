@@ -20,6 +20,9 @@ import org.junit.runner.RunWith
 import skip.ui.Binding
 import skip.ui.ComposeContext
 import skip.ui.NavigationStack
+import skip.ui.PresentationRoot
+import skip.ui.ScrollView
+import skip.ui.TabView
 import skip.ui.NavigationLink
 import skip.ui.NavigationPath
 import skip.ui.Text
@@ -114,6 +117,20 @@ class BooleanNavigationRestorationTest {
         InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         rule.onNodeWithText("Nested root").assertIsDisplayed()
         rule.runOnIdle { assertEquals(listOf(false), writes) }
+    }
+
+    @Test fun rootTabAndScrollRestoreTheirPreferences() {
+        val restoration = StateRestorationTester(rule)
+        restoration.setContent {
+            val context = remember { ComposeContext() }
+            PresentationRoot(context = context) { rootContext ->
+                TabView(content = { ScrollView(content = { Text(verbatim = "Restored tab content") }) })
+                    .Compose(context = rootContext)
+            }
+        }
+        rule.onNodeWithText("Restored tab content").assertIsDisplayed()
+        restoration.emulateSavedInstanceStateRestore()
+        rule.onNodeWithText("Restored tab content").assertIsDisplayed()
     }
 
 }
