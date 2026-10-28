@@ -1184,12 +1184,11 @@ extension View {
         #if SKIP
         let animTx = StateTracking.captureLastReadAndClear()
         return ModifiedContent(content: self, modifier: RenderModifier { renderable, context in
-            let density = LocalDensity.current
             let animatable = (Float(x), Float(y)).asAnimatable(context: context, animTx: animTx)
-            let positionPx = with(density) {
-                IntOffset(animatable.value.0.dp.roundToPx(), animatable.value.1.dp.roundToPx())
-            }
-            PositionLayout(content: renderable, x: Double(animatable.value.0), y: Double(animatable.value.1), context: context)
+            PositionLayout(content: renderable, position: {
+                let value = animatable.value
+                return CGPoint(x: Double(value.0), y: Double(value.1))
+            }, context: context)
         })
         #else
         return self
