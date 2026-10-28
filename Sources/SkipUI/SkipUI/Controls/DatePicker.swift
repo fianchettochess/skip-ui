@@ -5,10 +5,14 @@ import Foundation
 #if SKIP
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
@@ -212,7 +216,7 @@ public struct DatePicker : View, Renderable {
         }
 
         let colors = DatePickerDefaults.colors(selectedDayContainerColor: tintColor, selectedYearContainerColor: tintColor, todayDateBorderColor: tintColor, currentYearContentColor: tintColor)
-        SimpleDatePickerDialog(onDismissRequest: { isPresented.value = false }) {
+        SimpleDatePickerDialog(onDismissRequest: { isPresented.value = false }, isCalendar: true) {
             DatePicker(modifier: context.modifier, state: state, colors: colors)
         }
         if let millis = state.selectedDateMillis {
@@ -276,13 +280,28 @@ public struct DatePicker : View, Renderable {
 ///
 /// We can't use the actual `DatePickerDialog` because it has a fixed size that cuts off content in landscape.
 // SKIP INSERT: @OptIn(ExperimentalMaterial3Api::class)
-@Composable func SimpleDatePickerDialog(onDismissRequest: () -> Void, content: @Composable () -> Void) {
-    let horizontalPadding = EnvironmentValues.shared.horizontalSizeClass == .compact ? 16.dp : 0.dp
+@Composable func SimpleDatePickerDialog(onDismissRequest: () -> Void, isCalendar: Bool = false, content: @Composable () -> Void) {
+    let compact = EnvironmentValues.shared.horizontalSizeClass == .compact
     BasicAlertDialog(modifier: Modifier.wrapContentHeight(), onDismissRequest: onDismissRequest, properties: DialogProperties(usePlatformDefaultWidth: false)) {
-        Surface(modifier: Modifier.padding(horizontal: horizontalPadding), shape: DatePickerDefaults.shape) {
-            Column(verticalArrangement: Arrangement.SpaceBetween) {
-                Box(Modifier.weight(Float(1.0), fill: false)) {
-                    content()
+        BoxWithConstraints {
+            // Material 3's date-entry container has a 360dp minimum width.
+            // Give it that space before retaining the usual outer margins.
+            let horizontalPadding = compact && (!isCalendar || maxWidth >= 392.dp) ? 16.dp : 0.dp
+            let needsHorizontalScroll = isCalendar && maxWidth < 360.dp
+            let scrollState = rememberScrollState()
+            Surface(modifier: Modifier.padding(horizontal: horizontalPadding), shape: DatePickerDefaults.shape) {
+                Column(verticalArrangement: Arrangement.SpaceBetween) {
+                    var contentModifier = Modifier.weight(Float(1.0), fill: false)
+                    if needsHorizontalScroll {
+                        contentModifier = contentModifier.horizontalScroll(scrollState)
+                    }
+                    Box(contentModifier) {
+                        if needsHorizontalScroll {
+                            Box(Modifier.width(360.dp)) { content() }
+                        } else {
+                            content()
+                        }
+                    }
                 }
             }
         }
