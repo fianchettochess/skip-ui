@@ -17,9 +17,11 @@ public final class AppStorageSupport: StateTracker {
     private let key: String
     private let store: UserDefaults?
     private var value: Any?
+    private let defaultValue: Any
     private let get: (UserDefaults, Any?) -> Any?
     private let set: (UserDefaults, Any?) -> Void
     #if SKIP
+    private let trackingLock = NSRecursiveLock()
     private var state: MutableState<Any?>? = nil
     #endif
     /// The property change listener from the UserDefaults
@@ -30,6 +32,7 @@ public final class AppStorageSupport: StateTracker {
         self.key = key
         self.store = store as? UserDefaults
         self.value = value
+        self.defaultValue = value
         self.get = { $1 as? Bool ?? $0.bool(forKey: key) }
         self.set = { $0.set($1 as? Bool, forKey: key) }
         StateTracking.register(self)
@@ -40,6 +43,7 @@ public final class AppStorageSupport: StateTracker {
         self.key = key
         self.store = store as? UserDefaults
         self.value = value
+        self.defaultValue = value
         self.get = { $1 as? Double ?? $0.double(forKey: key) }
         self.set = { $0.set($1 as? Double, forKey: key) }
         StateTracking.register(self)
@@ -50,6 +54,7 @@ public final class AppStorageSupport: StateTracker {
         self.key = key
         self.store = store as? UserDefaults
         self.value = value
+        self.defaultValue = value
         self.get = { $1 as? Int ?? $0.integer(forKey: key) }
         self.set = { $0.set($1 as? Int, forKey: key) }
         StateTracking.register(self)
@@ -60,6 +65,7 @@ public final class AppStorageSupport: StateTracker {
         self.key = key
         self.store = store as? UserDefaults
         self.value = value
+        self.defaultValue = value
         self.get = { $1 as? String ?? $0.string(forKey: key) }
         self.set = { $0.set($1 as? String, forKey: key) }
         StateTracking.register(self)
@@ -70,6 +76,7 @@ public final class AppStorageSupport: StateTracker {
         self.key = key
         self.store = store as? UserDefaults
         self.value = value
+        self.defaultValue = value
         self.get = { $1 as? URL ?? $0.url(forKey: key) }
         self.set = { $0.set($1 as? URL, forKey: key) }
         StateTracking.register(self)
@@ -80,6 +87,7 @@ public final class AppStorageSupport: StateTracker {
         self.key = key
         self.store = store as? UserDefaults
         self.value = value
+        self.defaultValue = value
         self.get = { $1 as? Data ?? $0.data(forKey: key) }
         self.set = { $0.set($1 as? Data, forKey: key) }
         StateTracking.register(self)
@@ -218,25 +226,23 @@ public final class AppStorageSupport: StateTracker {
     // SKIP @bridge
     public func trackState() {
         #if SKIP
-        // Create our Compose-trackable backing state and keep it in sync with the store. Note that we have to seed the store with a value
-        // for the key in order for our listener to work
+        trackingLock.lock()
+        defer { trackingLock.unlock() }
         let store = self.currentStore
-        let object = store.object(forKey: key)
-        if let object {
-            value = get(store, object)
-        } else if let value {
-            set(store, value)
-        }
         state = mutableStateOf(value)
 
-        // Caution: The preference manager does not currently store a strong reference to the listener. You must store a strong reference to the listener, or it will be susceptible to garbage collection. We recommend you keep a reference to the listener in the instance data of an object that will exist as long as you need the listener.
-        // https://developer.android.com/reference/android/content/SharedPreferences.html#registerOnSharedPreferenceChangeListener(android.content.SharedPreferences.OnSharedPreferenceChangeListener)
+        // SharedPreferences holds listeners weakly. Register before reading so a
+        // later write to a previously absent key is observed without seeding it.
         self.listener = store.registerOnSharedPreferenceChangeListener(key: key) {
-            if let obj = store.object(forKey: key) {
-                value = get(store, obj)
-                state?.value = value
-            }
+            trackingLock.lock()
+            defer { trackingLock.unlock() }
+            let object = store.object(forKey: key)
+            value = object == nil ? defaultValue : get(store, object)
+            state?.value = value
         }
+        let object = store.object(forKey: key)
+        value = object == nil ? defaultValue : get(store, object)
+        state?.value = value
         #endif
     }
 }

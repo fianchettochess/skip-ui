@@ -13,6 +13,7 @@ public final class AppStorage<Value>: StateTracker {
     public let store: UserDefaults?
     private let serializer: ((Value) -> Any)?
     private let deserializer: ((Any) -> Value?)?
+    private let defaultValue: Value
     /// The property change listener from the UserDefaults
     private var listener: AnyObject? = nil
 
@@ -21,6 +22,7 @@ public final class AppStorage<Value>: StateTracker {
         self.store = store
         self.serializer = serializer
         self.deserializer = deserializer
+        self.defaultValue = wrappedValue
         _wrappedValue = wrappedValue
         StateTracking.register(self)
     }
@@ -55,6 +57,7 @@ public final class AppStorage<Value>: StateTracker {
     }
     private var _wrappedValue: Value
     #if SKIP
+    private let trackingLock = NSRecursiveLock()
     private var _wrappedValueState: MutableState<Value>?
     private var lastWriteTransaction: StateMutationTransaction?
     #endif
@@ -65,43 +68,38 @@ public final class AppStorage<Value>: StateTracker {
 
     public func trackState() {
         #if SKIP
-        // Create our Compose-trackable backing state and keep it in sync with the store. Note that we have to seed the store with a value
-        // for the key in order for our listener to work
+        trackingLock.lock()
+        defer { trackingLock.unlock() }
         let store = self.currentStore
-        let object = store.object(forKey: key)
-        let value: Value?
-        if let object, let deserializer {
-            value = deserializer(object)
-        } else {
-            value = object as? Value
-        }
-        if let value {
-            _wrappedValue = value
-        } else if let serializer {
-            store.set(serializer(_wrappedValue), forKey: key)
-        } else {
-            store.set(_wrappedValue, forKey: key)
-        }
         _wrappedValueState = mutableStateOf(_wrappedValue)
 
-        // Caution: The preference manager does not currently store a strong reference to the listener. You must store a strong reference to the listener, or it will be susceptible to garbage collection. We recommend you keep a reference to the listener in the instance data of an object that will exist as long as you need the listener.
-        // https://developer.android.com/reference/android/content/SharedPreferences.html#registerOnSharedPreferenceChangeListener(android.content.SharedPreferences.OnSharedPreferenceChangeListener)
+        // SharedPreferences holds listeners weakly. Register before reading so a
+        // later write to a previously absent key is observed without seeding it.
         self.listener = store.registerOnSharedPreferenceChangeListener(key: key) {
+            trackingLock.lock()
+            defer { trackingLock.unlock() }
             let object = store.object(forKey: key)
-            let value: Value?
+            let decoded: Value?
             if let object, let deserializer {
-                value = deserializer(object)
+                decoded = deserializer(object)
             } else {
-                value = object as? Value
+                decoded = object as? Value
             }
-            if let value {
-                // UserDefaults notifies all wrappers for this key in the write scope.
-                // A plain write clears the previous animation transaction.
-                lastWriteTransaction = StateTracking.currentTransaction
-                _wrappedValue = value
-                _wrappedValueState?.value = value
-            }
+            let value = decoded ?? defaultValue
+            lastWriteTransaction = StateTracking.currentTransaction
+            _wrappedValue = value
+            _wrappedValueState?.value = value
         }
+        let object = store.object(forKey: key)
+        let decoded: Value?
+        if let object, let deserializer {
+            decoded = deserializer(object)
+        } else {
+            decoded = object as? Value
+        }
+        let value = decoded ?? defaultValue
+        _wrappedValue = value
+        _wrappedValueState?.value = value
         #endif
     }
 
