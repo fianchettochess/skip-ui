@@ -73,7 +73,7 @@ public struct VStack : View, Renderable {
                     spacer.positionalMinLength = Self.defaultSpacing
                 }
             }
-            hasSpacers = hasSpacers || firstNonSpacerIndex > 0 || (lastNonSpacerIndex > 0 && lastNonSpacerIndex < renderables.size - 1)
+            hasSpacers = hasSpacers || firstNonSpacerIndex > 0 || (lastNonSpacerIndex >= 0 && lastNonSpacerIndex < renderables.size - 1)
         }
 
         let columnAlignment = alignment.asComposeAlignment()
@@ -242,29 +242,30 @@ public struct VStack : View, Renderable {
     }
 
     @Composable private func RenderSpaced(renderable: Renderable, adaptiveSpacing: Bool, lastWasText: Bool?, lastWasSpacer: Bool?, layoutImplementationVersion: Int, context: ComposeContext) -> (Bool?, Bool?) {
-        guard adaptiveSpacing else {
-            renderable.Render(context: context)
-            return (nil, nil)
-        }
-
-        // If the Text has spacing modifiers, no longer special case its spacing
-        let stripped = renderable.strip()
-        let isText = stripped is Text && renderable.forEachModifier { $0.role == .spacing ? true : nil } == true
-        let isSpacer = stripped is Spacer
-        if layoutImplementationVersion == 0 {
-            if let lastWasText {
-                let spacing = lastWasText && isText ? (spacing ?? Self.textSpacing) : (spacing ?? Self.defaultSpacing)
-                androidx.compose.foundation.layout.Spacer(modifier: Modifier.height(spacing.dp))
+        var resultText: Bool? = nil
+        var resultSpacer: Bool? = nil
+        if adaptiveSpacing {
+            // If the Text has spacing modifiers, no longer special case its spacing
+            let stripped = renderable.strip()
+            let isText = stripped is Text && renderable.forEachModifier { $0.role == .spacing ? true : nil } == true
+            let isSpacer = stripped is Spacer
+            if layoutImplementationVersion == 0 {
+                if let lastWasText {
+                    let spacing = lastWasText && isText ? (spacing ?? Self.textSpacing) : (spacing ?? Self.defaultSpacing)
+                    androidx.compose.foundation.layout.Spacer(modifier: Modifier.height(spacing.dp))
+                }
+            } else {
+                // Add spacing before any non-Spacer
+                if let lastWasSpacer, !lastWasSpacer && !isSpacer {
+                    let spacing = lastWasText == true && isText ? (spacing ?? Self.textSpacing) : (spacing ?? Self.defaultSpacing)
+                    androidx.compose.foundation.layout.Spacer(modifier: Modifier.height(spacing.dp))
+                }
             }
-        } else {
-            // Add spacing before any non-Spacer
-            if let lastWasSpacer, !lastWasSpacer && !isSpacer {
-                let spacing = lastWasText == true && isText ? (spacing ?? Self.textSpacing) : (spacing ?? Self.defaultSpacing)
-                androidx.compose.foundation.layout.Spacer(modifier: Modifier.height(spacing.dp))
-            }
+            resultText = isText
+            resultSpacer = isSpacer
         }
         renderable.Render(context: context)
-        return (isText, isSpacer)
+        return (resultText, resultSpacer)
     }
 
     private func childKey(for renderable: Renderable, index: Int, occurrences: MutableMap<Any, Int>) -> Any {

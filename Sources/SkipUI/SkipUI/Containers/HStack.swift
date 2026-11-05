@@ -62,7 +62,7 @@ public struct HStack : View, Renderable {
                     spacer.positionalMinLength = Self.defaultSpacing
                 }
             }
-            hasSpacers = hasSpacers || firstNonSpacerIndex > 0 || (lastNonSpacerIndex > 0 && lastNonSpacerIndex < renderables.size - 1)
+            hasSpacers = hasSpacers || firstNonSpacerIndex > 0 || (lastNonSpacerIndex >= 0 && lastNonSpacerIndex < renderables.size - 1)
         }
 
         let rowAlignment = alignment.asComposeAlignment()
@@ -230,18 +230,17 @@ public struct HStack : View, Renderable {
     }
 
     @Composable private func RenderSpaced(renderable: Renderable, adaptiveSpacing: Bool, lastWasSpacer: Bool?, layoutImplementationVersion: Int, context: ComposeContext) -> Bool? {
-        guard adaptiveSpacing else {
-            renderable.Render(context: context)
-            return nil
-        }
-
-        // Add spacing before any non-Spacer
-        let isSpacer = renderable.strip() is Spacer
-        if let lastWasSpacer, !lastWasSpacer && !isSpacer {
-            androidx.compose.foundation.layout.Spacer(modifier: Modifier.width((spacing ?? Self.defaultSpacing).dp))
+        var result: Bool? = nil
+        if adaptiveSpacing {
+            // Add spacing before any non-Spacer
+            let isSpacer = renderable.strip() is Spacer
+            if let lastWasSpacer, !lastWasSpacer && !isSpacer {
+                androidx.compose.foundation.layout.Spacer(modifier: Modifier.width((spacing ?? Self.defaultSpacing).dp))
+            }
+            result = isSpacer
         }
         renderable.Render(context: context)
-        return isSpacer
+        return result
     }
 
     private func childKey(for renderable: Renderable, index: Int, occurrences: MutableMap<Any, Int>) -> Any {
