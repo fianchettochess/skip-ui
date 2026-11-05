@@ -23,6 +23,10 @@ import androidx.compose.ui.Modifier
     /// The scope of the current composition (so users can call scoped modifiers).
     public var scope: AnyObject?
 
+    /// Internal render metadata; child contexts reset it with their modifiers.
+    /// Public to preserve the generated Kotlin memberwise initializer's visibility.
+    public var hasExplicitAccessibilityLabel: Bool = false
+
     /// The context to pass to child content of a container view.
     ///
     /// By default, modifiers and the `composer` are reset for child content.
