@@ -11,6 +11,9 @@ import androidx.compose.material.ContentAlpha
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
 #endif
@@ -57,6 +60,12 @@ public struct Label : View, Renderable {
 
     #if SKIP
     @Composable override func Render(context: ComposeContext) {
+        var context = context
+        if context.hasExplicitAccessibilityLabel {
+            // Keep the caller's outer label semantics while preventing our
+            // icon/title descendants from becoming additional spoken labels.
+            context.modifier = context.modifier.clearAndSetSemantics {}
+        }
         var style = EnvironmentValues.shared._labelStyle ?? LabelStyle.automatic
         let placement = EnvironmentValues.shared._placement
         if style == .automatic {
@@ -83,7 +92,7 @@ public struct Label : View, Renderable {
         case .titleOnly:
             RenderTitle(context: context)
         case .iconOnly:
-            RenderImage(context: context, imageColor: imageColor)
+            RenderIconOnlyLabel(context: context, imageColor: imageColor)
         default:
             RenderLabel(context: context, imageColor: imageColor, titlePadding: titlePadding)
         }
@@ -91,10 +100,33 @@ public struct Label : View, Renderable {
 
     @Composable private func RenderLabel(context: ComposeContext, imageColor: Color?, titlePadding: Double) {
         Row(modifier: context.modifier, horizontalArrangement: Arrangement.spacedBy(8.dp), verticalAlignment: androidx.compose.ui.Alignment.CenterVertically) {
-            RenderImage(context: context.content(), imageColor: imageColor)
+            RenderLabelImage(context: context.content(), imageColor: imageColor)
             Box(modifier: Modifier.padding(start: titlePadding.dp)) {
                 RenderTitle(context: context.content())
             }
+        }
+    }
+
+    // Keep the icon's measured size, while letting the actual title supply
+    // semantics. The overlay does not draw or contribute to measurement.
+    @Composable private func RenderIconOnlyLabel(context: ComposeContext, imageColor: Color?) {
+        Box(modifier: context.modifier.semantics(mergeDescendants: true) {}) {
+            RenderLabelImage(context: context.content(), imageColor: imageColor)
+            Box(modifier: Modifier.matchParentSize().drawWithContent {}) {
+                RenderTitle(context: context.content())
+            }
+        }
+    }
+
+    // Scope only the image inside this Label. Direct RenderImage consumers,
+    // standalone images, and explicit image accessibility modifiers remain.
+    @Composable private func RenderLabelImage(context: ComposeContext, imageColor: Color?) {
+        let placement = EnvironmentValues.shared._placement
+        EnvironmentValues.shared.setValues {
+            $0.set_placement(placement.union(ViewPlacement.labelImage))
+            return ComposeResult.ok
+        } in: {
+            RenderImage(context: context, imageColor: imageColor)
         }
     }
 

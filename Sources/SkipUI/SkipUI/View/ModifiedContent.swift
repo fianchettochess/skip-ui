@@ -87,12 +87,15 @@ class RenderModifier: ModifierProtocol {
         self.action = action
     }
 
-    init(role: ModifierRole = .unspecified, action: @Composable (ComposeContext) -> Modifier) {
+    init(role: ModifierRole = .unspecified, explicitAccessibilityLabel: Bool = false, action: @Composable (ComposeContext) -> Modifier) {
         self.role = role
         self.modifierAction = action
         self.action = { content, context in
             var context = context
             context.modifier = action(context)
+            if explicitAccessibilityLabel {
+                context.hasExplicitAccessibilityLabel = true
+            }
             content.Render(context: context)
         }
     }

@@ -38,7 +38,7 @@ extension View {
     // SKIP @bridge
     public func accessibilityLabel(_ label: Text, isEnabled: Bool = true) -> any View {
         #if SKIP
-        return ModifiedContent(content: self, modifier: RenderModifier(role: .accessibility) {
+        return ModifiedContent(content: self, modifier: RenderModifier(role: .accessibility, explicitAccessibilityLabel: isEnabled) {
             if isEnabled {
                 let description = label.localizedTextString()
                 return $0.modifier.semantics { contentDescription = description }
@@ -53,7 +53,7 @@ extension View {
 
     public func accessibilityLabel(_ label: String, isEnabled: Bool = true) -> any View {
         #if SKIP
-        return ModifiedContent(content: self, modifier: RenderModifier(role: .accessibility) {
+        return ModifiedContent(content: self, modifier: RenderModifier(role: .accessibility, explicitAccessibilityLabel: isEnabled) {
             if isEnabled {
                 return $0.modifier.semantics { contentDescription = label }
             } else {

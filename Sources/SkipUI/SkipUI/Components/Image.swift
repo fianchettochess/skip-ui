@@ -222,7 +222,7 @@ public struct Image : View, Renderable, Equatable {
         }
     }
 
-    @Composable private func RenderSymbolImage(name: String, url: URL, label: Text?, aspectRatio: Double?, contentMode: ContentMode?, context: ComposeContext) {
+    @Composable private func RenderSymbolImage(name: String, url: URL, label: Text?, aspectRatio: Double?, contentMode: ContentMode?, context: ComposeContext, isSystemSymbol: Bool = false) {
 
         func symbolToImageVector(_ symbol: SymbolInfo, tintColor: androidx.compose.ui.graphics.Color, fitToBounds: Bool) -> (ImageVector, Float) {
             // this is the default size for material icons (24f), defined in the internal MaterialIconDimension variable with the comment "All Material icons (currently) are 24dp by 24dp, with a viewport size of 24 by 24" at:
@@ -400,7 +400,7 @@ public struct Image : View, Renderable, Equatable {
         //logger.info("symbolInfos for name=\(name) against weightPriority=\(weightPriority): \(Array(symbolInfos.keys))")
         if let symbolInfo = weightPriority.compactMap({ symbolInfos[$0] }).first {
             let (imageVector, sizeRatio) = symbolToImageVector(symbolInfo, tintColor: tintColor, fitToBounds: resizingMode == .stretch)
-            RenderScaledImageVector(image: imageVector, name: name, sizeRatio: sizeRatio, aspectRatio: aspectRatio, contentMode: contentMode, context: context)
+            RenderScaledImageVector(image: imageVector, name: name, sizeRatio: sizeRatio, aspectRatio: aspectRatio, contentMode: contentMode, context: context, isSystemSymbol: isSystemSymbol)
         }
     }
 
@@ -453,21 +453,21 @@ public struct Image : View, Renderable, Equatable {
         // we first check to see if there is a bundled symbol with the name in any of the asset catalogs, in which case we will use that symbol
         // note that we can only use the `main` (i.e., top-level) bundle to look up image resources, since Image(systemName:) does not accept a bundle
         if let symbolResourceURL = rememberCachedAsset(contentsCache, AssetKey(name: effectiveName)) { _ in symbolResourceURL(name: effectiveName, bundle: Bundle.main) } {
-            RenderSymbolImage(name: effectiveName, url: symbolResourceURL, label: nil, aspectRatio: aspectRatio, contentMode: contentMode, context: context)
+            RenderSymbolImage(name: effectiveName, url: symbolResourceURL, label: nil, aspectRatio: aspectRatio, contentMode: contentMode, context: context, isSystemSymbol: true)
             return
        }
 
         // fall back to default symbol names
         guard let image = Self.composeImageVector(named: effectiveName) else {
             logger.warning("Unable to find system image named: \(effectiveName)")
-            Icon(imageVector: Icons.Default.Warning, contentDescription: "missing icon")
+            Icon(imageVector: Icons.Default.Warning, contentDescription: EnvironmentValues.shared._placement.contains(ViewPlacement.labelImage) ? nil : "missing icon")
             return
         }
 
-        RenderScaledImageVector(image: image, name: effectiveName, aspectRatio: aspectRatio, contentMode: contentMode, context: context)
+        RenderScaledImageVector(image: image, name: effectiveName, aspectRatio: aspectRatio, contentMode: contentMode, context: context, isSystemSymbol: true)
     }
 
-    @Composable private func RenderScaledImageVector(image: ImageVector, name: String, sizeRatio: Float = Float(1.0), aspectRatio: Double?, contentMode: ContentMode?, context: ComposeContext) {
+    @Composable private func RenderScaledImageVector(image: ImageVector, name: String, sizeRatio: Float = Float(1.0), aspectRatio: Double?, contentMode: ContentMode?, context: ComposeContext, isSystemSymbol: Bool = false) {
 
         let tintColor = EnvironmentValues.shared._foregroundStyle?.asColor(opacity: 1.0, animationContext: context) ?? Color.primary.colorImpl()
         switch resizingMode {
@@ -495,7 +495,8 @@ public struct Image : View, Renderable, Equatable {
             } else {
                 tintColor ?? Color.primary.colorImpl()
             }
-            Icon(imageVector: image, contentDescription: name, modifier: modifier, tint: iconTint)
+            let description = isSystemSymbol && EnvironmentValues.shared._placement.contains(ViewPlacement.labelImage) ? nil : name
+            Icon(imageVector: image, contentDescription: description, modifier: modifier, tint: iconTint)
         }
     }
 

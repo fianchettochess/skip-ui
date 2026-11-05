@@ -10,6 +10,7 @@ struct ViewPlacement: RawRepresentable, OptionSet {
     static let systemTextColor = ViewPlacement(rawValue: 2)
     static let onPrimaryColor = ViewPlacement(rawValue: 4)
     static let toolbar = ViewPlacement(rawValue: 8)
+    static let labelImage = ViewPlacement(rawValue: 16)
 }
 
 #endif
