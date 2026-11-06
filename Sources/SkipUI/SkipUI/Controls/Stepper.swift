@@ -215,16 +215,16 @@ public struct Stepper : View, Renderable {
 
         Row(
             modifier: Modifier
-                .height(36.dp)
+                .height(48.dp)
                 .border(width: 1.dp, color: borderColor, shape: shape)
                 .clip(shape),
             verticalAlignment: Alignment.CenterVertically
         ) {
-            IconButton(onClick: { performDecrement() }, enabled: canDecrement, modifier: Modifier.size(36.dp)) {
+            IconButton(onClick: { performDecrement() }, enabled: canDecrement, modifier: Modifier.size(48.dp)) {
                 Icon(imageVector: Icons.Filled.Remove, contentDescription: "Decrement", tint: canDecrement ? tintColor : disabledColor)
             }
             HorizontalDivider(modifier: Modifier.width(1.dp).height(20.dp), color: borderColor)
-            IconButton(onClick: { performIncrement() }, enabled: canIncrement, modifier: Modifier.size(36.dp)) {
+            IconButton(onClick: { performIncrement() }, enabled: canIncrement, modifier: Modifier.size(48.dp)) {
                 Icon(imageVector: Icons.Filled.Add, contentDescription: "Increment", tint: canIncrement ? tintColor : disabledColor)
             }
         }
